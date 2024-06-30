@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
@@ -33,11 +33,48 @@ export default class ScribePlugin extends Plugin {
 		this.addCommand({
 			id: 'rewrite-note',
 			name: 'Scribe: Rewrite Note with LLM.',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
+			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				const noteContent = editor.getValue()
 				console.log(noteContent)
-				const newNote = "LLM Generate " + noteContent
-				editor.setValue(newNote)
+
+				console.log("reaching out to ollama")
+				// Reach out the the LLM
+				const response = await fetch('http://localhost:11434/api/generate', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						model: 'llama3:7',
+						prompt: 'tell me a joke.',
+						stream: true
+					})
+				});
+
+
+				if (!response.body) {
+					console.error('Response body is null');
+					return;
+				}
+
+				const reader = response.body.getReader();
+				const decoder = new TextDecoder('utf-8');
+				let result = ''; 
+
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					const chunk = decoder.decode(value, { stream: true });
+					try {
+						const json = JSON.parse(chunk);
+						if (json.response) {
+							result += json.response;
+							editor.setValue(result);
+						}
+					} catch (e) {
+						console.error('Failed to parse JSON chunk', e);
+					}
+				}
 			}
 		});
 
@@ -64,22 +101,6 @@ export default class ScribePlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
 	}
 }
 
