@@ -32,10 +32,46 @@ export default class ScribePlugin extends Plugin {
 		// This adds an editor command that can perform some operation on the current editor instance
 		this.addCommand({
 			id: 'rewrite-note',
-			name: 'Scribe: Rewrite Note with LLM.',
+			name: 'Rewrite Note',
 			editorCallback: async (editor: Editor, view: MarkdownView) => {
 				const noteContent = editor.getValue()
 				console.log(noteContent)
+
+				const template = `
+				**Client Name:** <!-- Enter client name here -->
+
+				---
+
+				## Agenda
+				<!-- General agenda for the meeting -->
+				---
+				## Meeting Notes
+				<!-- General notes about the meeting -->
+
+				**Participants:**
+				-  My Team: 
+
+				-  Client Team: 
+
+				---
+				## Next Steps 
+				<!-- A bullet list of next steps and whose responsible for them -->
+
+
+				---
+				# References
+				`
+
+				const prompt = `
+				Rewrite the note given the format of the template
+				ensure that the note is formatted correctly and only contain template information:
+
+				template:
+				${template}
+
+				note:
+				${noteContent}
+				`	
 
 				console.log("reaching out to ollama")
 				// Reach out the the LLM
@@ -45,8 +81,8 @@ export default class ScribePlugin extends Plugin {
 						'Content-Type': 'application/json'
 					},
 					body: JSON.stringify({
-						model: 'llama3:7',
-						prompt: 'tell me a joke.',
+						model: 'llama3',
+						prompt: prompt, 
 						stream: true
 					})
 				});
